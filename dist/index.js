@@ -14,25 +14,36 @@ export class SubagentModelPoolService extends Service {
         this.config = config;
     }
     [Service.init]() {
-        this.ctx.on('agent/created', ({ agent, source, signal }) => {
-            if (source !== 'startup' || signal?.aborted)
-                return;
-            if (agent.session.header.origin !== 'subagent')
-                return;
-            if (!unwrap(this.config.enabled))
-                return;
-            const models = unwrap(this.config.models);
-            const picked = selectRoundRobin(models, this.cursor);
-            if (!picked)
-                return;
-            this.cursor += 1;
-            const selection = {
-                provider: picked.provider,
-                model: picked.model,
-                ...picked.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(picked.reasoningEffort) },
-            };
-            agent.model.select(selection);
+        this.ctx.on('agent/created', (event) => {
+            try {
+                this.assignModel(event);
+            }
+            catch (error) {
+                try {
+                    this.ctx.logger.warn('dsh-subagent-model-pool: failed to assign model: %s', error);
+                }
+                catch { }
+            }
         });
+    }
+    assignModel({ agent, source, signal }) {
+        if (source !== 'startup' || signal?.aborted)
+            return;
+        if (agent.session.header.origin !== 'subagent')
+            return;
+        if (!unwrap(this.config.enabled))
+            return;
+        const models = unwrap(this.config.models);
+        const picked = selectRoundRobin(models, this.cursor);
+        if (!picked)
+            return;
+        this.cursor += 1;
+        const selection = {
+            provider: picked.provider,
+            model: picked.model,
+            ...picked.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(picked.reasoningEffort) },
+        };
+        agent.model.select(selection);
     }
 }
 export default SubagentModelPoolService;

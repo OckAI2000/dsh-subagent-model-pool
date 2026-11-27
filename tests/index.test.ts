@@ -43,6 +43,46 @@ test('pool overrides an explicit/inherited child route for startup subagents', (
   assert.deepEqual(second.model.selections, [{ provider: 'workbuddy-global', model: 'hy4flash-free' }])
 })
 
+test('a throwing config getter does not block later agent/created subscribers', () => {
+  const ctx = new Context()
+  const service = new SubagentModelPoolService(ctx, {
+    enabled: true,
+    models: { get() { throw new Error('bad config') } },
+  })
+  service[Service.init]()
+  const warned: any[] = []
+  ctx.logger.warn = ((...args: any[]) => { warned.push(args) }) as any
+  let laterCalls = 0
+  ctx.on('agent/created', () => { laterCalls += 1 })
+
+  emitAgentCreated(ctx, createAgent(), 'startup')
+
+  assert.equal(laterCalls, 1)
+  assert.equal(warned.length, 1)
+  assert.match(String(warned[0][1]), /bad config/)
+})
+
+test('a throwing model selection is isolated and logged', () => {
+  const ctx = new Context()
+  const service = new SubagentModelPoolService(ctx, {
+    enabled: true,
+    models: [{ provider: 'workbuddy', model: 'hy4flash' }],
+  })
+  service[Service.init]()
+  const warned: any[] = []
+  ctx.logger.warn = ((...args: any[]) => { warned.push(args) }) as any
+  let laterCalls = 0
+  ctx.on('agent/created', () => { laterCalls += 1 })
+  const agent = createAgent()
+  agent.model.select = () => { throw new Error('select failed') }
+
+  emitAgentCreated(ctx, agent, 'startup')
+
+  assert.equal(laterCalls, 1)
+  assert.equal(warned.length, 1)
+  assert.match(String(warned[0][1]), /select failed/)
+})
+
 test('disabled plugin and non-startup or non-subagent agents are untouched', () => {
   const ctx = new Context()
   const service = new SubagentModelPoolService(ctx, {

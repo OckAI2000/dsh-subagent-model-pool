@@ -36,23 +36,31 @@ export class SubagentModelPoolService extends Service {
   }
 
   protected [Service.init](): void {
-    this.ctx.on('agent/created', ({ agent, source, signal }: { agent: any; source: string; signal?: { aborted: boolean } }) => {
-      if (source !== 'startup' || signal?.aborted) return
-      if (agent.session.header.origin !== 'subagent') return
-      if (!unwrap(this.config.enabled)) return
-
-      const models = unwrap(this.config.models) as readonly PoolModel[]
-      const picked = selectRoundRobin(models, this.cursor)
-      if (!picked) return
-      this.cursor += 1
-
-      const selection: ModelSelection = {
-        provider: picked.provider,
-        model: picked.model,
-        ...picked.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(picked.reasoningEffort) },
+    this.ctx.on('agent/created', (event: { agent: any; source: string; signal?: { aborted: boolean } }) => {
+      try {
+        this.assignModel(event)
+      } catch (error) {
+        try { this.ctx.logger.warn('dsh-subagent-model-pool: failed to assign model: %s', error) } catch {}
       }
-      agent.model.select(selection)
     })
+  }
+
+  private assignModel({ agent, source, signal }: { agent: any; source: string; signal?: { aborted: boolean } }): void {
+    if (source !== 'startup' || signal?.aborted) return
+    if (agent.session.header.origin !== 'subagent') return
+    if (!unwrap(this.config.enabled)) return
+
+    const models = unwrap(this.config.models) as readonly PoolModel[]
+    const picked = selectRoundRobin(models, this.cursor)
+    if (!picked) return
+    this.cursor += 1
+
+    const selection: ModelSelection = {
+      provider: picked.provider,
+      model: picked.model,
+      ...picked.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(picked.reasoningEffort) },
+    }
+    agent.model.select(selection)
   }
 }
 

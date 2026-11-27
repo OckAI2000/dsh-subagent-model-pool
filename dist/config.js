@@ -5,9 +5,9 @@ export const ConfigSchema = z.object({
     enabled: z.boolean().default(true).volatile()
         .description('Enable automatic model assignment for newly created subagents.'),
     models: z.array(z.object({
-        provider: z.string().required(),
-        model: z.string().required(),
-        reasoningEffort: z.string(),
+        provider: z.string().pattern(/^\S(?:.*\S)?$/).required(),
+        model: z.string().pattern(/^\S(?:.*\S)?$/).required(),
+        reasoningEffort: z.string().pattern(/^(?:|\S(?:.*\S)?)$/),
     })).default([]).volatile()
         .description('Round-robin model pool, e.g. [{provider:"workbuddy",model:"hy4flash"}].'),
 });

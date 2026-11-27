@@ -262,16 +262,21 @@ window.__ModuleLoader__.load({
       const [draft, setDraft] = useState(null)
       const [pending, setPending] = useState(false)
       const [error, setError] = useState('')
+      const [, forceRender] = useState(0)
       const models = normalizeModels(draft ? draft.models : value.models)
       const enabled = draft ? draft.enabled : value.enabled !== false
 
+      useEffect(() => face?.subscribe?.(() => forceRender((n) => n + 1)), [face])
       useEffect(() => { face?.refreshCatalog?.() }, [face])
 
       const write = async (field, val) => {
         const form = face?.form
         if (!form || !writable) return
         setPending(true); setError('')
-        try { await form.set(field, val) }
+        try {
+          const accepted = await form.set(field, val)
+          if (accepted === false) setError(tr('配置写入被拒绝；请稍后重试。', 'Configuration write was refused; please retry.'))
+        }
         catch (e) { setError(String(e?.message || e)) }
         finally { setPending(false) }
       }
@@ -389,9 +394,19 @@ window.__ModuleLoader__.load({
           if (!forms) return
           ctx.effect(() => forms.whileServed(NS_CANDIDATES, (served) => {
             const ns = NS_CANDIDATES.find((n) => served.has(n)) || [...served].find((n) => /subagent-model-pool/i.test(n))
-            face.form = ns && forms.get ? forms.get(ns) : undefined
+            const next = ns && forms.get ? forms.get(ns) : undefined
+            if (face.form !== next) {
+              try { face.formUnsubscribe?.() } catch {}
+              face.form = next
+              face.formUnsubscribe = next?.subscribe ? next.subscribe(face.emit) : undefined
+            }
             face.emit()
-            return () => { face.form = undefined; face.emit() }
+            return () => {
+              try { face.formUnsubscribe?.() } catch {}
+              face.formUnsubscribe = undefined
+              face.form = undefined
+              face.emit()
+            }
           }), 'dsh-subagent-model-pool: config form binding')
         })
         ctx.effect(() => {
