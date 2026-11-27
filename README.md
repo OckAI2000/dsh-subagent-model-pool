@@ -31,7 +31,7 @@ Independent DSH Cordis plugin that assigns newly created subagents to models fro
 dsh plugin --profile web add github:OckAI2000/dsh-subagent-model-pool
 ```
 
-Restart DSH after installation. The GitHub package installs source TypeScript directly; DSH runs it without a build step (it uses Node 22 type stripping). The package metadata declares the bundle patch, so the `dsh-subagent-model-pool` row can be enabled or disabled from **Plugins → Installed** like other bundles. Pin a commit when reproducibility matters:
+Restart DSH after installation. The GitHub package publishes a compiled JavaScript entrypoint in `dist/`; no local build step is needed after installation. The package metadata declares the bundle patch, so the `dsh-subagent-model-pool` row can be enabled or disabled from **Plugins → Installed** like other bundles. Pin a commit when reproducibility matters:
 
 ```bash
 dsh plugin --profile web add github:OckAI2000/dsh-subagent-model-pool#<commit-sha>

@@ -36,7 +36,7 @@ export class SubagentModelPoolService extends Service {
   }
 
   protected [Service.init](): void {
-    this.ctx.on('agent/created', ({ agent, source, signal }: { agent: any; source: string; signal?: AbortSignal }) => {
+    this.ctx.on('agent/created', ({ agent, source, signal }: { agent: any; source: string; signal?: { aborted: boolean } }) => {
       if (source !== 'startup' || signal?.aborted) return
       if (agent.session.header.origin !== 'subagent') return
       if (!unwrap(this.config.enabled)) return
