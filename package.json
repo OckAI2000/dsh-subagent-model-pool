@@ -1,6 +1,6 @@
 {
   "name": "dsh-subagent-model-pool",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Independent DSH plugin: assign new subagents from a plugin-owned model pool using round-robin.",
   "type": "module",
   "main": "dist/index.js",
